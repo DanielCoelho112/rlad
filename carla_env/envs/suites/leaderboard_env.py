@@ -7,12 +7,12 @@ from carla_env.utils import config_utils
 
 class LeaderboardEnv(CarlaEnv):
     def __init__(self, carla_map, host, port, obs_configs, terminal_configs, reward_configs,
-                 weather_group, routes_group, carla_fps, tm_port):
+                 weather_group, routes_group, carla_fps, tm_port, seed):
 
         all_tasks = self.build_all_tasks(
             carla_map, weather_group, routes_group)
         super().__init__(carla_map, host, port, obs_configs,
-                         terminal_configs, reward_configs, all_tasks, carla_fps, tm_port)
+                         terminal_configs, reward_configs, all_tasks, carla_fps, tm_port, seed)
 
     @staticmethod
     def build_all_tasks(carla_map, weather_group, routes_group):
@@ -51,7 +51,7 @@ class LeaderboardEnv(CarlaEnv):
         else:
             weathers = [weather_group]
 
-        CARLA_ENV_ROOT_DIR = f"{os.getenv('CURLAD_ROOT')}/carla_env"
+        CARLA_ENV_ROOT_DIR = f"{os.getenv('RLAD_DEV_ROOT')}/carla_env"
 
         # task_type setup
         if carla_map == 'Town04' and routes_group is not None:

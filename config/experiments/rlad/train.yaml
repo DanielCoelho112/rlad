@@ -9,4 +9,5 @@
   host: "127.0.0.1"
   port: 2000
   tm_port: 8010
+  seed: 1
   

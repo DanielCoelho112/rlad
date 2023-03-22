@@ -2,9 +2,9 @@ from carla_env.envs.base_env import CarlaEnv
 
 
 class EndlessEnv(CarlaEnv):
-    def __init__(self, carla_map, host, port, obs_configs,  terminal_configs, reward_configs, num_zombie_vehicles, num_zombie_walkers, weather_group, carla_fps, tm_port):
+    def __init__(self, carla_map, host, port, obs_configs,  terminal_configs, reward_configs, num_zombie_vehicles, num_zombie_walkers, weather_group, carla_fps, tm_port, seed):
         all_tasks = self.build_all_tasks(num_zombie_vehicles, num_zombie_walkers, weather_group)
-        super().__init__(carla_map, host, port, obs_configs, terminal_configs, reward_configs, all_tasks, carla_fps, tm_port)
+        super().__init__(carla_map, host, port, obs_configs, terminal_configs, reward_configs, all_tasks, carla_fps, tm_port, seed)
 
     @staticmethod
     def build_all_tasks(num_zombie_vehicles, num_zombie_walkers, weather_group):

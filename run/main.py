@@ -15,6 +15,7 @@ from carla_env.envs.suites.corl2017_env import CoRL2017Env
 from carla_env.envs.suites.leaderboard_env import LeaderboardEnv
 from run.src.log_file import LogFile
 from run.src.evaluate_agent import evaluate_agent
+from utilities.common import set_random_seed
 
 
 def main():
@@ -26,15 +27,12 @@ def main():
     parser.add_argument('-ttc', '--train_test_config',
                         type=str, default='train.yaml')
     parser.add_argument('-rt', '--resume_training', action='store_true')
-    
 
     arglist = [x for x in sys.argv[1:] if not x.startswith('__')]
     args = vars(parser.parse_args(args=arglist))
 
-    
-    
     experiment_name = args['experiment_name']
-    experiment_path = f'{os.getenv("HOME")}/results/curlad/{experiment_name}'
+    experiment_path = f'{os.getenv("HOME")}/results/rlad_dev/{experiment_name}'
     train_test_config_name = args['train_test_config']
 
     train = True if train_test_config_name == 'train.yaml' else False
@@ -43,10 +41,10 @@ def main():
     else:
         print(f"{Fore.WHITE} Initialize testing! {Fore.RESET}")
 
-    CURLAD_ROOT = os.getenv('CURLAD_ROOT')
-    observation_config_path = f"{CURLAD_ROOT}/config/experiments/{experiment_name}/observation.yaml"
-    policy_config_path = f"{CURLAD_ROOT}/config/experiments/{experiment_name}/policy.yaml"
-    train_test_config_path = f"{CURLAD_ROOT}/config/experiments/{experiment_name}/{train_test_config_name}"
+    RLAD_DEV_ROOT = os.getenv('RLAD_DEV_ROOT')
+    observation_config_path = f"{RLAD_DEV_ROOT}/config/experiments/{experiment_name}/observation.yaml"
+    policy_config_path = f"{RLAD_DEV_ROOT}/config/experiments/{experiment_name}/policy.yaml"
+    train_test_config_path = f"{RLAD_DEV_ROOT}/config/experiments/{experiment_name}/{train_test_config_name}"
 
     with open(observation_config_path) as f:
         observation_config = yaml.load(f, Loader=SafeLoader)
@@ -57,9 +55,13 @@ def main():
 
     # TODO: check if we have more than one training environment (Curriculum Learning).
     env_config_name = train_test_config[0]['env_name']
-    env_config_path = f"{CURLAD_ROOT}/config/envs/{env_config_name}"
+    env_config_path = f"{RLAD_DEV_ROOT}/config/envs/{env_config_name}"
     with open(env_config_path) as f:
         env_config = yaml.load(f, Loader=SafeLoader)[0]
+
+    # set random seed
+    seed = train_test_config[0].get('seed', None)
+    set_random_seed(seed=seed)
 
     # Load Environment.
     carla_map = env_config['env_configs'].get('carla_map', None)
@@ -109,21 +111,21 @@ def main():
         env = NoCrashEnv(carla_map=carla_map, host=host, port=port, obs_configs=observation_config,
                          reward_configs=reward_configs, terminal_configs=terminal_configs,
                          weather_group=weather_group, route_description=route_description,
-                         background_traffic=background_traffic, carla_fps=carla_fps, tm_port=tm_port)
+                         background_traffic=background_traffic, carla_fps=carla_fps, tm_port=tm_port, seed=seed)
     elif env_config['env_id'].split('-')[0] == 'Endless':
         env = EndlessEnv(carla_map=carla_map, host=host, port=port, obs_configs=observation_config,
                          terminal_configs=terminal_configs, reward_configs=reward_configs,
                          num_zombie_vehicles=num_zombie_vehicles, num_zombie_walkers=num_zombie_walkers,
-                         weather_group=weather_group, carla_fps=carla_fps, tm_port=tm_port)
+                         weather_group=weather_group, carla_fps=carla_fps, tm_port=tm_port, seed=seed)
     elif env_config['env_id'].split('-')[0] == 'CoRL2017':
         env = CoRL2017Env(carla_map=carla_map, host=host, port=port, obs_configs=observation_config,
                           terminal_configs=terminal_configs, reward_configs=reward_configs,
                           weather_group=weather_group, route_description=route_description, task_type=task_type,
-                          carla_fps=carla_fps, tm_port=tm_port)
+                          carla_fps=carla_fps, tm_port=tm_port, seed=seed)
     elif env_config['env_id'].split('-')[0] == 'LeaderBoard':
         env = LeaderboardEnv(carla_map=carla_map, host=host, port=port, obs_configs=observation_config,
                              reward_configs=reward_configs, terminal_configs=terminal_configs, weather_group=weather_group,
-                             routes_group=routes_group, carla_fps=carla_fps, tm_port=tm_port)
+                             routes_group=routes_group, carla_fps=carla_fps, tm_port=tm_port, seed=seed)
     else:
         env = None
         raise Exception('Unknown Environment!')
@@ -157,11 +159,11 @@ def main():
         if (not train) or (steps_eval > eval_freq) or (steps == 0):
             num_episodes = eval_average_episodes if train else n_episodes
             eval_idx, best_score, scores, steps_array = evaluate_agent(env=env, agent=agent, logfile=logfile, step_train=steps, episode_train=ep-1,
-                           num_episodes=num_episodes, eval_idx=eval_idx, best_score=best_score, steps_array=steps_array, scores_eval=scores, maximum_speed=maximum_speed, train=train)
+                                                                       num_episodes=num_episodes, eval_idx=eval_idx, best_score=best_score, steps_array=steps_array, scores_eval=scores, maximum_speed=maximum_speed, train=train)
             if not train:
                 break
             steps_eval = 0
-            
+
         remember_cnt = 0
         done = False
         observation = env.reset()
@@ -170,11 +172,12 @@ def main():
         score = 0
 
         while not done:
-            
+
             if steps < warmup_steps:
                 action, controls = agent.random_action(raw_state=observation)
             else:
-                action, controls = agent.choose_action(raw_state=observation, step=steps)
+                action, controls = agent.choose_action(
+                    raw_state=observation, step=steps)
 
             observation_, reward, done, info = env.step(controls)
             score += reward
@@ -185,9 +188,8 @@ def main():
             else:
                 remember_cnt += 1
 
-            
             _ = agent.learn(step=steps)
-           
+
             if args['visualize_monitor']:
                 image = observation_['monitor']['data']
                 cv2.imshow('monitor', image)
@@ -197,10 +199,8 @@ def main():
             steps += 1
             steps_eval += 1
 
-
         print(
             f" {Fore.BLUE} episode: {ep}, steps: {steps}, score: {score:.1f} {Fore.RESET}")
-
 
         if steps >= maximum_steps:
             break

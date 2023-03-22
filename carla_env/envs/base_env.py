@@ -17,13 +17,13 @@ from utilities.common import set_random_seed
 
 
 class CarlaEnv():
-    def __init__(self, carla_map, host, port, obs_configs, terminal_configs, reward_configs, all_tasks, carla_fps, tm_port):
+    def __init__(self, carla_map, host, port, obs_configs, terminal_configs, reward_configs, all_tasks, carla_fps, tm_port, seed):
         self._all_tasks = all_tasks
         self._obs_configs = obs_configs
         self._carla_map = carla_map
         self.carla_fps = carla_fps
 
-        self.seed = 2021
+        self.seed = seed
 
         self.name = self.__class__.__name__
  
@@ -97,7 +97,6 @@ class CarlaEnv():
 
         self._set_sync_mode(True)
         
-        set_random_seed(self.seed)
         self._tm.set_random_device_seed(self.seed)
 
         self._world.tick()

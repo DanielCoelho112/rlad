@@ -126,8 +126,8 @@ class LogFile():
     def save_config_files(self, observation_config, policy_config, train_test_config):
 
         env_config_name = train_test_config[0]['env_name']
-        # in CURLAD folder.
-        env_config_path = f"{os.getenv('CURLAD_ROOT')}/config/envs/{env_config_name}"
+        # in RLAD_DEV folder.
+        env_config_path = f"{os.getenv('RLAD_DEV_ROOT')}/config/envs/{env_config_name}"
         with open(env_config_path) as f:
             env_config = yaml.load(f, Loader=SafeLoader)
 

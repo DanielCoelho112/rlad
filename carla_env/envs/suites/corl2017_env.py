@@ -7,9 +7,9 @@ from carla_env.utils import config_utils
 
 class CoRL2017Env(CarlaEnv):
     def __init__(self, carla_map, host, port, obs_configs, terminal_configs, reward_configs,
-                 weather_group, route_description, task_type, carla_fps, tm_port):
+                 weather_group, route_description, task_type, carla_fps, tm_port, seed):
         all_tasks = self.build_all_tasks(carla_map, weather_group, route_description, task_type)
-        super().__init__(carla_map, host, port, obs_configs, terminal_configs, reward_configs, all_tasks, carla_fps, tm_port)
+        super().__init__(carla_map, host, port, obs_configs, terminal_configs, reward_configs, all_tasks, carla_fps, tm_port, seed)
 
     @staticmethod
     def build_all_tasks(carla_map, weather_group, route_description, task_type):
@@ -24,8 +24,8 @@ class CoRL2017Env(CarlaEnv):
         elif weather_group == 'train':
             weathers = ['ClearNoon', 'WetNoon', 'HardRainNoon', 'ClearSunset']
         # task_type setup
-        CURLAD_ROOT = os.getenv('CURLAD_ROOT')
-        description_path = f'{CURLAD_ROOT}/carla_env/envs/scenario_descriptions/CoRL2017/{route_description}'
+        RLAD_DEV_ROOT = os.getenv('RLAD_DEV_ROOT')
+        description_path = f'{RLAD_DEV_ROOT}/carla_env/envs/scenario_descriptions/CoRL2017/{route_description}'
         if task_type == 'straight':
             description_folder = f'{description_path}/Straight/{carla_map}'
             num_zombie_vehicles = 0

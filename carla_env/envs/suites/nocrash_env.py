@@ -8,9 +8,9 @@ from carla_env.utils import config_utils
 
 class NoCrashEnv(CarlaEnv):
     def __init__(self, carla_map, host, port, obs_configs, terminal_configs, reward_configs,
-                 weather_group, route_description, background_traffic, carla_fps, tm_port):
+                 weather_group, route_description, background_traffic, carla_fps, tm_port, seed):
         all_tasks = self.build_all_tasks(carla_map, weather_group, route_description, background_traffic)
-        super().__init__(carla_map, host, port, obs_configs, terminal_configs, reward_configs, all_tasks, carla_fps, tm_port)
+        super().__init__(carla_map, host, port, obs_configs, terminal_configs, reward_configs, all_tasks, carla_fps, tm_port, seed)
 
     @staticmethod
     def build_all_tasks(carla_map, weather_group, route_description, background_traffic):
@@ -55,7 +55,7 @@ class NoCrashEnv(CarlaEnv):
                 num_zombie_vehicles = 70
                 num_zombie_walkers = 70
         
-        CARLA_ENV_ROOT_DIR = f"{os.getenv('CURLAD_ROOT')}/carla_env"
+        CARLA_ENV_ROOT_DIR = f"{os.getenv('RLAD_DEV_ROOT')}/carla_env"
         description_folder = f"{CARLA_ENV_ROOT_DIR}/envs/scenario_descriptions/NoCrash/{route_description}/{carla_map}"
         actor_configs_dict = json.load(open(f'{description_folder}/actors.json'))
         route_descriptions_dict = config_utils.parse_routes_file(f'{description_folder}/routes.xml')
