@@ -1,5 +1,5 @@
 # RLAD
-This is implementation for inference and training of the method Reinforcement Learning from Pixels (RLfP) described in:
+This is implementation of RLAD, which is described in:
 
 > **RLAD: Reinforcement Learning from Pixels for Autonomous Driving in Urban Environments**
 >
