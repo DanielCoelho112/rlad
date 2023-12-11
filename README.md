@@ -3,9 +3,9 @@ This is implementation of RLAD, which is described in:
 
 > **RLAD: Reinforcement Learning from Pixels for Autonomous Driving in Urban Environments**
 >
-> [Daniel Coelho](https://anthonyhu.github.io/), 
-[Miguel Oliveira](https://github.com/gianlucacorrado),
-[Vítor Santos](https://github.com/nicolasgriffiths).
+> [Daniel Coelho](https://github.com/DanielCoelho112), 
+[Miguel Oliveira](https://github.com/miguelriemoliveira),
+[Vítor Santos](https://github.com/vitoruapt).
 >
 > [IEEE Transactions on Automation Science and Engineering](https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=8856)<br/>
 
