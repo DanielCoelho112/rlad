@@ -32,7 +32,7 @@ def main():
     args = vars(parser.parse_args(args=arglist))
 
     experiment_name = args['experiment_name']
-    experiment_path = f'{os.getenv("HOME")}/results/rlad_dev/{experiment_name}'
+    experiment_path = f'{os.getenv("HOME")}/results/rlad/{experiment_name}'
     train_test_config_name = args['train_test_config']
 
     train = True if train_test_config_name == 'train.yaml' else False
@@ -41,10 +41,10 @@ def main():
     else:
         print(f"{Fore.WHITE} Initialize testing! {Fore.RESET}")
 
-    RLAD_DEV_ROOT = os.getenv('RLAD_DEV_ROOT')
-    observation_config_path = f"{RLAD_DEV_ROOT}/config/experiments/{experiment_name}/observation.yaml"
-    policy_config_path = f"{RLAD_DEV_ROOT}/config/experiments/{experiment_name}/policy.yaml"
-    train_test_config_path = f"{RLAD_DEV_ROOT}/config/experiments/{experiment_name}/{train_test_config_name}"
+    RLAD_ROOT = os.getenv('RLAD_ROOT')
+    observation_config_path = f"{RLAD_ROOT}/config/experiments/{experiment_name}/observation.yaml"
+    policy_config_path = f"{RLAD_ROOT}/config/experiments/{experiment_name}/policy.yaml"
+    train_test_config_path = f"{RLAD_ROOT}/config/experiments/{experiment_name}/{train_test_config_name}"
 
     with open(observation_config_path) as f:
         observation_config = yaml.load(f, Loader=SafeLoader)
@@ -55,7 +55,7 @@ def main():
 
     # TODO: check if we have more than one training environment (Curriculum Learning).
     env_config_name = train_test_config[0]['env_name']
-    env_config_path = f"{RLAD_DEV_ROOT}/config/envs/{env_config_name}"
+    env_config_path = f"{RLAD_ROOT}/config/envs/{env_config_name}"
     with open(env_config_path) as f:
         env_config = yaml.load(f, Loader=SafeLoader)[0]
 
@@ -170,7 +170,6 @@ def main():
         agent.reset(raw_state=observation)
 
         score = 0
-
         while not done:
 
             if steps < warmup_steps:

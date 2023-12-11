@@ -73,27 +73,6 @@ class ActorNetwork(nn.Module):
         
     
     
-# if __name__ == '__main__':
-    
-#     actor = ActorNetwork(num_inputs=250, fc1_dims=50,fc2_dims=25, lr=0.001, device=torch.device('cuda:0'), checkpoint_dir=f'{os.getenv("HOME")}')
-    
-#     state = torch.rand(size=(1,250)).to(torch.device('cuda:0'))
-    
-#     mean, log_std = actor(state)
-#     # print(f"mean: {mean}")
-#     # print(f"log_std: {log_std}")
-    
-#     # print('sampling...')
-    
-#     action, log_prob, mean = actor.sample(state)
-#     print(f"action: {action}")
-#     print(mean.shape)
-    
-#     # print(f"log_prob: {log_prob}")
-#     print(f"mean: {mean}")
-    
-#     # actor.save_checkpoint()
-#     # actor.load_checkpoint()
     
     
         

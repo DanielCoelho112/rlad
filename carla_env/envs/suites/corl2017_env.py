@@ -24,8 +24,8 @@ class CoRL2017Env(CarlaEnv):
         elif weather_group == 'train':
             weathers = ['ClearNoon', 'WetNoon', 'HardRainNoon', 'ClearSunset']
         # task_type setup
-        RLAD_DEV_ROOT = os.getenv('RLAD_DEV_ROOT')
-        description_path = f'{RLAD_DEV_ROOT}/carla_env/envs/scenario_descriptions/CoRL2017/{route_description}'
+        RLAD_ROOT = os.getenv('RLAD_ROOT')
+        description_path = f'{RLAD_ROOT}/carla_env/envs/scenario_descriptions/CoRL2017/{route_description}'
         if task_type == 'straight':
             description_folder = f'{description_path}/Straight/{carla_map}'
             num_zombie_vehicles = 0

@@ -1,0 +1,86 @@
+entry_point: agents.rlad.agent:Agent
+kwargs:
+  augmentation_config:
+    use_aug: True
+    pad: 8
+  vehicle_measurements_config:
+    entry_point: agents.models.vehicle_measurements.vehicle_measurements:VehicleMeasurementsEncoder
+    lr: 0.001
+    weight_decay: 0.0
+    num_inputs: 2
+    fc_dims: 8
+    out_dims: 16
+  traffic_light_config:
+    entry_point: agents.models.traffic_light.traffic_light:TrafficLightDecoder
+    lr: 0.001
+    weight_decay: 0.0
+    update_frequency: 1
+    tl_fc_dims: 64
+    tl_latent_size: 128
+  waypoints_config:
+    entry_point: agents.models.waypoints.waypoints:WayConv1D
+    num_waypoints: 10
+    fc_dims: 20
+    out_dims: 32
+    lr: 0.001
+    weight_decay: 0.0
+  image_config:
+    entry_point: agents.models.image.image:ImageEncoder
+    lr: 0.001 
+    weight_decay: 0.000
+    image_size: 256
+    tau: 0.05
+  agent_config:
+    lr_alpha: 0.00001
+    device: cuda:7
+    gamma: 0.99 
+    alpha: 0.1 
+    automatic_alpha: True
+    batch_size: 256
+    latent_route_planner_size: 32
+    latent_vehicle_measurement_size: 16
+    latent_image_size: 256
+    target_update_interval: 1
+    deque_size: 3
+    pid:
+      kp: 1.0
+      ki: 0.2
+      kd: 0.001
+      dt: 0.1
+    repeat_action: 2
+    n_step: 1
+  critic_config:
+    entry_point: agents.models.rl_networks.critic_network:CriticNetwork
+    fc1_dims: 1024 
+    fc2_dims: 1024 
+    lr: 0.001 
+    update_frequency: 1
+    tau: 0.01
+  actor_config:
+    entry_point: agents.models.rl_networks.actor_network:ActorNetwork
+    fc1_dims: 1024 
+    fc2_dims: 1024
+    lr: 0.001 
+    log_sig_min: -10 
+    log_sig_max: 2
+    epsilon: 0.000001 
+    update_frequency: 1 
+  memory_config:
+    capacity: 100000 
+    num_workers: 2
+    raw_state_info:
+      central_rgb:
+        shape: (9, 256, 256) 
+        dtype: np.uint8
+      route_plan:
+        shape: (10, 2)
+        dtype: np.float32
+      vehicle_measurements:
+        shape: (6,)
+        dtype: np.float32
+      traffic_light_state:
+        shape: (1,)
+        dtype: np.uint8
+
+
+    

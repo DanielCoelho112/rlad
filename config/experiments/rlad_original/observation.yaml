@@ -1,4 +1,3 @@
-# @package _group_
 speed:
   module: actor_state.speed
 gnss:
@@ -22,6 +21,5 @@ monitor:
   width: 640
   height: 360
   location: [-8.5, 0.0, 3.0]
-  # rotation: [0.0, -8.0, 0.0] # Monitor does not work with angles here! Not sure why.
   rotation: [0.0, 0.0, 0.0]
   distort_images: False

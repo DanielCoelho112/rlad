@@ -2,7 +2,6 @@ import os
 import shutil
 import json
 import yaml
-import numpy as np
 import csv
 
 from datetime import datetime
@@ -20,6 +19,9 @@ class LogFile():
         self.train_test_config_name = train_test_config_name
         self.train_test_name = train_test_config_name.split('.')[0]
         self.test_folder_path = f"{experiment_path}/{self.train_test_name}"
+        
+        
+        print(experiment_path)
         
         if self.train:
             if os.path.exists(experiment_path) and not overwrite:
@@ -127,7 +129,7 @@ class LogFile():
 
         env_config_name = train_test_config[0]['env_name']
         # in RLAD_DEV folder.
-        env_config_path = f"{os.getenv('RLAD_DEV_ROOT')}/config/envs/{env_config_name}"
+        env_config_path = f"{os.getenv('RLAD_ROOT')}/config/envs/{env_config_name}"
         with open(env_config_path) as f:
             env_config = yaml.load(f, Loader=SafeLoader)
 

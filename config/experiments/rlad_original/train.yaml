@@ -1,10 +1,10 @@
 - env_name: endless_full.yaml
-  description: "SAC with AE in empty env."
+  description: "RLAD."
   n_steps: 3000000
   moving_window: 50
-  warmup_steps: 1000 # common is 1000.
+  warmup_steps: 1000 
   start_remembering: 10
-  evaluate_average_episodes: 8 # common is 20.
+  evaluate_average_episodes: 10 # common is 20.
   evaluate_frequency_steps: 20000
   host: "127.0.0.1"
   port: 2000

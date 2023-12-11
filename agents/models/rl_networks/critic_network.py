@@ -26,7 +26,7 @@ class CriticNetwork(nn.Module):
         self.fc5 = nn.Linear(fc1_dims, fc2_dims)
         self.fc6 = nn.Linear(fc2_dims, 1)       
 
-        # init network weights.
+
         self.apply(weights_init)
         
         self.optimizer = optimzer.Adam(self.parameters(), lr=lr)
@@ -53,18 +53,4 @@ class CriticNetwork(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file, map_location=self.device))
         self.optimizer.load_state_dict(torch.load(self.checkpoint_optimizer, map_location=self.device))
         
-        
-    
-    
-# if __name__ == '__main__':
-    
-#     critic = CriticNetwork(num_inputs=100, fc1_dims=50,fc2_dims=25, n_actions=3, lr=0.001, device=torch.device('cuda:0'), checkpoint_dir=f'{os.getenv("HOME")}')
-    
-#     x = torch.rand(size=(10,100)).to(torch.device('cuda:0'))
-#     actions = torch.rand(size=(10,3)).to(torch.device('cuda:0'))
-    
-#     print(critic(x, actions).size())
-    
-#     critic.save_checkpoint()
-    
         

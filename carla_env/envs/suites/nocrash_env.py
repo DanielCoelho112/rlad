@@ -55,7 +55,7 @@ class NoCrashEnv(CarlaEnv):
                 num_zombie_vehicles = 70
                 num_zombie_walkers = 70
         
-        CARLA_ENV_ROOT_DIR = f"{os.getenv('RLAD_DEV_ROOT')}/carla_env"
+        CARLA_ENV_ROOT_DIR = f"{os.getenv('RLAD_ROOT')}/carla_env"
         description_folder = f"{CARLA_ENV_ROOT_DIR}/envs/scenario_descriptions/NoCrash/{route_description}/{carla_map}"
         actor_configs_dict = json.load(open(f'{description_folder}/actors.json'))
         route_descriptions_dict = config_utils.parse_routes_file(f'{description_folder}/routes.xml')

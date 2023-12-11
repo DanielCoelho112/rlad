@@ -9,16 +9,14 @@ from colorama import Fore
 from importlib import import_module
 from collections import deque
 
-from agents.template.agent import Agent
-from agents.models.memory.memory_drqv2 import ReplayBufferStorage, make_replay_loader
-from agents.models.classification_branch.classification_branch_tl import ClassificationBranchV2_alix
-from agents.models.feature_extraction.encoder_alix import ParameterizedReg, LocalSignalMixing, custom_parameterized_aug_optimizer_builder
+from agents.models.memory.memory import ReplayBufferStorage, make_replay_loader
+from agents.models.image.image import ParameterizedReg, LocalSignalMixing, custom_parameterized_aug_optimizer_builder
 from utilities.controls import carla_control, PID
-from utilities.networks import update_target_network, StdSchedule, RandomShiftsAug
+from utilities.networks import update_target_network, RandomShiftsAug
 
 
-class Agent(Agent):
-    def __init__(self, augmentation_config, vehicle_measurements_config, waypoint_config, classification_branch_config, encoder_config, agent_config, critic_config, actor_config, memory_config, maximum_speed, experiment_path, init_memory, n_steps):
+class Agent():
+    def __init__(self, augmentation_config, vehicle_measurements_config, waypoints_config, traffic_light_config, image_config, agent_config, critic_config, actor_config, memory_config, maximum_speed, experiment_path, init_memory, n_steps):
 
         self.maximum_speed = maximum_speed
         self.experiment_path = experiment_path
@@ -38,25 +36,22 @@ class Agent(Agent):
         self.repeat_action = agent_config['repeat_action']
         self.n_step = agent_config['n_step']
         self.deque_size = agent_config['deque_size']
-
-        self.std_schedule = StdSchedule(
-            init=agent_config['std_schedule_init'], final=agent_config['std_schedule_final'], duration=agent_config['std_schedule_duration'])
+        self.num_workers = memory_config['num_workers']
 
         self.use_aug = augmentation_config['use_aug']
         
-        # classification branch config
-        self.classification_branch_update_freq = classification_branch_config[
+        self.traffic_light_update_freq = traffic_light_config[
             'update_frequency']
 
         # waypoint config
-        self.num_waypoints = waypoint_config['num_waypoints']
+        self.num_waypoints = waypoints_config['num_waypoints']
 
         # critic config
         self.critic_tau = critic_config['tau']
         self.critic_update_freq = critic_config['update_frequency']
 
         # encoder config
-        self.image_size = encoder_config['image_size']
+        self.image_size = image_config['image_size']
 
         # actor config
         self.actor_update_freq = actor_config['update_frequency']
@@ -89,7 +84,7 @@ class Agent(Agent):
         aug = LocalSignalMixing(pad=2, fixed_batch=True)
         encoder_aug = ParameterizedReg(
             aug=aug, parameter_init=0.5, param_grad_fn='alix_param_grad', param_grad_fn_args=[3, 0.535, 1e-20])
-        module_str, class_str = encoder_config['entry_point'].split(
+        module_str, class_str = image_config['entry_point'].split(
             ':')
         _Class = getattr(import_module(module_str), class_str)
         self.image_encoder = _Class(
@@ -97,20 +92,23 @@ class Agent(Agent):
 
 
         image_encoder_optim_builder = custom_parameterized_aug_optimizer_builder(
-            encoder_lr=encoder_config['lr'], lr=2e-3, betas=[0.5, 0.999])
+            encoder_lr=image_config['lr'], lr=2e-3, betas=[0.5, 0.999])
         self.image_encoder_optim = image_encoder_optim_builder(
             self.image_encoder)
 
-        # classification branch
-        self.classification_branch = ClassificationBranchV2_alix(classification_branch_config=classification_branch_config, image_latent_size=self.latent_image_size,
+        # traffic light branch
+        module_str, class_str = traffic_light_config['entry_point'].split(
+            ':')
+        _Class = getattr(import_module(module_str), class_str)
+        self.traffic_light_decoder = _Class(traffic_light_config=traffic_light_config, image_latent_size=self.latent_image_size,
                                                                  device=self.device, checkpoint_dir=self.experiment_path)
 
         # waypoint encoder
-        module_str, class_str = waypoint_config['entry_point'].split(
+        module_str, class_str = waypoints_config['entry_point'].split(
             ':')
         _Class = getattr(import_module(module_str), class_str)
-        self.waypoint_encoder = _Class(lr=waypoint_config['lr'], num_waypoints=waypoint_config['num_waypoints'], fc_dims=waypoint_config['fc_dims'],
-                                       out_dims=waypoint_config['out_dims'], weight_decay=waypoint_config['weight_decay'], device=self.device, target=False, checkpoint_dir=self.experiment_path)
+        self.waypoints_encoder = _Class(lr=waypoints_config['lr'], num_waypoints=waypoints_config['num_waypoints'], fc_dims=waypoints_config['fc_dims'],
+                                       out_dims=waypoints_config['out_dims'], weight_decay=waypoints_config['weight_decay'], device=self.device, target=False, checkpoint_dir=self.experiment_path)
 
         # vehicle measurement encoder
         module_str, class_str = vehicle_measurements_config['entry_point'].split(
@@ -131,19 +129,18 @@ class Agent(Agent):
         # hard update using tau=1.
         update_target_network(self.critic_target, self.critic, tau=1)
 
-        self.pid = PID(kp=agent_config['pid']['kp'], ki=agent_config['pid']['ki'],
-                       kd=agent_config['pid']['kd'], dt=agent_config['pid']['dt'], maximum_speed=maximum_speed)
-
         # actor
         module_str, class_str = actor_config['entry_point'].split(':')
         _Class = getattr(import_module(module_str), class_str)
         self.policy = _Class(num_inputs=self.state_size, fc1_dims=actor_config['fc1_dims'], fc2_dims=actor_config['fc2_dims'], lr=actor_config['lr'], device=self.device,
                                    checkpoint_dir=self.experiment_path, log_sig_min=actor_config['log_sig_min'], log_sig_max=actor_config['log_sig_max'], epsilon=actor_config['epsilon'])
 
+        self.pid = PID(kp=agent_config['pid']['kp'], ki=agent_config['pid']['ki'],
+                       kd=agent_config['pid']['kd'], dt=agent_config['pid']['dt'], maximum_speed=maximum_speed)
 
         # encoder tl optim.
         image_encoder_optim_builder = custom_parameterized_aug_optimizer_builder(
-            encoder_lr=classification_branch_config['lr'], lr=2e-3, betas=[0.5, 0.999])
+            encoder_lr=traffic_light_config['lr'], lr=2e-3, betas=[0.5, 0.999])
         self.tl_image_encoder_optim = image_encoder_optim_builder(
             self.image_encoder)
         self.checkpoint_tl_image_encoder_optim = f"{self.experiment_path}/weights/optimizers/tl_image_encoder.pt"
@@ -154,9 +151,7 @@ class Agent(Agent):
             self.log_alpha = torch.tensor(np.log(agent_config['alpha']), requires_grad=True, device=self.device)
             self.alpha_optim = torch.optim.Adam(
                 [self.log_alpha], lr=agent_config['lr_alpha'])
- 
-
-    
+     
     @property
     def replay_iter(self):
         if self._replay_iter is None:
@@ -171,27 +166,27 @@ class Agent(Agent):
         return raw_state_info
 
     def encode(self, raw_state, detach=False, target=False):
-        image = raw_state['central_rgb']  # (N, 3, 232, 232).
+        image = raw_state['central_rgb'] 
 
         vm_data = raw_state['vehicle_measurements']
 
-        route_plan = raw_state['route_plan']  # (N, 1).
+        route_plan = raw_state['route_plan']  
 
         if target:
             with torch.no_grad():
-                route_plan = self.waypoint_encoder_target(route_plan)
+                route_plan = self.waypoints_encoder_target(route_plan)
         else:
-            route_plan = self.waypoint_encoder(route_plan)
+            route_plan = self.waypoints_encoder(route_plan)
 
         if target:
             with torch.no_grad():
-                state_image = self.image_encoder_target(image)  # (N, 512).
+                state_image = self.image_encoder_target(image) 
         else:
             state_image = self.image_encoder(image)
             
         if target:
             with torch.no_grad():
-                state_vm = self.vm_encoder_target(vm_data)  # (N, 512).
+                state_vm = self.vm_encoder_target(vm_data)
         else:
             state_vm = self.vm_encoder(vm_data)
             
@@ -201,23 +196,9 @@ class Agent(Agent):
             state_vm = state_vm.detach()
 
         state = torch.cat([state_image, state_vm,
-                          route_plan], dim=1)  # (N, 519)
+                          route_plan], dim=1) 
 
         return state
-
-    def encode_image(self, raw_state, detach=False, target=False):
-        image = raw_state['central_rgb']  # (N, 3, 232, 232).
-
-        if target:
-            with torch.no_grad():
-                latent_image = self.image_encoder_target(image)  # (N, 512).
-        else:
-            latent_image = self.image_encoder(image)
-
-        if detach:
-            latent_image = latent_image.detach()
-
-        return latent_image
 
     @torch.no_grad()
     def choose_action(self, raw_state, step, greedy=False):
@@ -230,7 +211,6 @@ class Agent(Agent):
                 raw_state=raw_state, unsqueeze=True)
 
             state = self.encode(raw_state=raw_state, detach=True)
-
 
             if greedy is False:
                 action, _, _ = self.policy.sample(state)
@@ -332,11 +312,11 @@ class Agent(Agent):
     def learn(self, step):
         self.learn_ctn += 1
 
-        if self.learn_ctn < 256 or self.replay_storage._num_episodes < 2:
+        if self.learn_ctn < 256 or self.replay_storage._num_episodes < self.num_workers:
             losses = {}
             return losses
 
-        if self.learn_ctn % self.critic_update_freq != 0 and self.learn_ctn % self.actor_update_freq != 0 and self.learn_ctn % self.target_update_interval != 0 and self.learn_ctn % self.classification_branch_update_freq != 0:
+        if self.learn_ctn % self.critic_update_freq != 0 and self.learn_ctn % self.actor_update_freq != 0 and self.learn_ctn % self.target_update_interval != 0 and self.learn_ctn % self.traffic_light_decoder_update_freq != 0:
             losses = {}
             return losses
 
@@ -373,7 +353,7 @@ class Agent(Agent):
             q_loss = None
 
         ########################################################################
-        #######################    actor-networks  #############################
+        #######################    actor-network  ##############################
         ########################################################################
 
         if self.learn_ctn % self.actor_update_freq == 0:
@@ -391,11 +371,11 @@ class Agent(Agent):
                                   source=self.critic, tau=self.critic_tau)
 
         ########################################################################
-        #######################   classification branch  #######################
+        #######################   traffic_light update  ########################
         ########################################################################
 
-        if self.learn_ctn % self.classification_branch_update_freq == 0:
-            self.classification_branch.update(
+        if self.learn_ctn % self.traffic_light_update_freq == 0:
+            self.traffic_light_decoder.update(
                 raw_state_batch=raw_state_batch, image_encoder=self.image_encoder, image_encoder_optim=self.tl_image_encoder_optim)
 
 
@@ -427,14 +407,14 @@ class Agent(Agent):
         q_loss = q1_loss + q2_loss
 
         self.vm_encoder.optimizer.zero_grad(set_to_none=True)
-        self.waypoint_encoder.optimizer.zero_grad(set_to_none=True)
+        self.waypoints_encoder.optimizer.zero_grad(set_to_none=True)
         self.image_encoder_optim.zero_grad(set_to_none=True)
         self.critic.optimizer.zero_grad(set_to_none=True)
 
         q_loss.backward()
 
         self.vm_encoder.optimizer.step()
-        self.waypoint_encoder.optimizer.step()
+        self.waypoints_encoder.optimizer.step()
         self.image_encoder_optim.step()
         self.critic.optimizer.step()
 
@@ -448,7 +428,7 @@ class Agent(Agent):
         q1, q2 = self.critic(state_batch, actions)
         min_q = torch.min(q1, q2)
 
-        # Jπ = 𝔼st∼D,εt∼N[α * logπ(f(εt;st)|st) − Q(st,f(εt;st))]
+     
         policy_loss = ((self.alpha * log_prob) - min_q).mean()
 
         self.policy.optimizer.zero_grad()
@@ -463,7 +443,7 @@ class Agent(Agent):
             self.alpha_optim.step()
             self.alpha = self.log_alpha.exp()
 
-            alpha_logs = self.alpha.clone()  # logging purposes.
+            alpha_logs = self.alpha.clone()  
 
         return round(policy_loss.item(), 4), round(alpha_loss.item(), 4), round(alpha_logs.item(), 4)
     
@@ -494,18 +474,18 @@ class Agent(Agent):
         self.critic_target.train()
         self.policy.train()
         self.image_encoder.train()
-        self.waypoint_encoder.train()
+        self.waypoints_encoder.train()
         self.vm_encoder.train()
-        self.classification_branch.train()
+        self.traffic_light_decoder.train()
 
     def set_eval_mode(self):
         self.critic.eval()
         self.critic_target.eval()
         self.policy.eval()
         self.image_encoder.eval()
-        self.waypoint_encoder.eval()
+        self.waypoints_encoder.eval()
         self.vm_encoder.eval()
-        self.classification_branch.eval()
+        self.traffic_light_decoder.eval()
 
     def save_models(self, save_memory=False):
         print(f'{Fore.GREEN} saving models... {Fore.RESET}')
@@ -514,8 +494,8 @@ class Agent(Agent):
         self.critic_target.save_checkpoint()
         self.policy.save_checkpoint()
         self.image_encoder.save_checkpoint()
-        self.waypoint_encoder.save_checkpoint()
-        self.classification_branch.save_checkpoint()
+        self.waypoints_encoder.save_checkpoint()
+        self.traffic_light_decoder.save_checkpoint()
         self.vm_encoder.save_checkpoint()
         torch.save(self.tl_image_encoder_optim.state_dict(), self.checkpoint_tl_image_encoder_optim)
         if self.automatic_entropy_tuning:
@@ -531,8 +511,8 @@ class Agent(Agent):
         self.critic_target.load_checkpoint()
         self.policy.load_checkpoint()
         self.image_encoder.load_checkpoint()
-        self.waypoint_encoder.load_checkpoint()
-        self.classification_branch.load_checkpoint()
+        self.waypoints_encoder.load_checkpoint()
+        self.traffic_light_decoder.load_checkpoint()
         self.vm_encoder.load_checkpoint()
         self.tl_image_encoder_optim.load_state_dict(torch.load(self.checkpoint_tl_image_encoder_optim, map_location=self.device))
         if self.automatic_entropy_tuning:

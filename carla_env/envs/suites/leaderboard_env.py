@@ -51,7 +51,7 @@ class LeaderboardEnv(CarlaEnv):
         else:
             weathers = [weather_group]
 
-        CARLA_ENV_ROOT_DIR = f"{os.getenv('RLAD_DEV_ROOT')}/carla_env"
+        CARLA_ENV_ROOT_DIR = f"{os.getenv('RLAD_ROOT')}/carla_env"
 
         # task_type setup
         if carla_map == 'Town04' and routes_group is not None:
