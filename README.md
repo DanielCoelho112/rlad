@@ -28,7 +28,7 @@ where `results_path` is the path where the results will be written, and `rlad_pa
 
 ## Training
 - Start the CARLA server
-- Run: python3 rlad/run/python3 main.py -en rlad
+- Run: python3 rlad/run/python3 main.py -en rlad_original
 
 
 ## Credits
