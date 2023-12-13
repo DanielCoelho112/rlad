@@ -11,7 +11,6 @@ class WayConv1D(nn.Module):
 
         self.num_waypoints = num_waypoints
         self.device = device
-        self.mode = 'conv'
 
         if target:
             self.checkpoint_file = f"{checkpoint_dir}/weights/waypoint_encoder_target.pt"

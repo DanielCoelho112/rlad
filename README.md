@@ -1,5 +1,5 @@
 # RLAD
-This is implementation of RLAD, which is described in:
+This is the implementation of RLAD, which is described in:
 
 > **RLAD: Reinforcement Learning from Pixels for Autonomous Driving in Urban Environments**
 >
@@ -22,7 +22,7 @@ If you find our work useful, please consider citing: WIP
 ## Setup
 - Clone the repository with `git clone git@github.com:DanielCoelho112/rlad.git`
 - Download [CARLA 0.9.10.1](https://github.com/carla-simulator/carla/releases/tag/0.9.10.1).
-- Run the docker container with `docker run -it --gpus all --network=host -v results_path:/root/results/rlteacher -v rlad_path:/root/rlad danielc11/rlad:0.0 bash`
+- Run the docker container with `docker run -it --gpus all --network=host -v results_path:/root/results/rlad -v rlad_path:/root/rlad danielc11/rlad:0.0 bash`
 where `results_path` is the path where the results will be written, and `rlad_path` is the path of the rlad repository.
 
 

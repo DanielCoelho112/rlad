@@ -2,17 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F 
 import numpy as np
-import torchvision.transforms as transforms
-import carla
 
 from skimage.util.shape import view_as_windows
 from torch.distributions.utils import _standard_normal
 
-# init weights using xavier distribution.
-# def weights_init(m):
-#     if isinstance(m, nn.Linear):
-#         torch.nn.init.xavier_uniform_(m.weight, gain=1)
-#         torch.nn.init.constant_(m.bias, 0)
+
 def initialize_weights_general(initializer):
     def initialize(m):
         if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
@@ -47,17 +41,7 @@ def update_target_network(target, source, tau):
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
 
-def one_hot_encoding(array, n_classes, replace_void=False):
-    # VOID is -1, but it will have to become 0.
-    if replace_void:
-        array[array==-1] = 0
-    
-    # array must be float64 to be one hot encoded.
-    array = array.to(torch.int64)
-    array = F.one_hot(array, num_classes=n_classes).squeeze(1)
-    
-    return array
-    
+
     
 def random_crop(imgs, output_size):
     """
@@ -111,18 +95,6 @@ def get_n_params_network(model):
         pp += nn
     return pp
 
-def create_augmentation_pipeline(augmentation_config, final_image_size):
-    
- 
-    trans = transforms.Compose([
-        transforms.RandomCrop(augmentation_config['random_crop']),
-        transforms.Resize(final_image_size),
-        transforms.ColorJitter(brightness=(augmentation_config['jitter']['min_brightness'], augmentation_config['jitter']['max_brightness']),
-                               contrast=(augmentation_config['jitter']['min_contrast'], augmentation_config['jitter']['max_contrast']),
-                               saturation=(augmentation_config['jitter']['min_saturation'], augmentation_config['jitter']['max_saturation']))
-                               ])
-    
-    return trans
 
 
 
@@ -183,169 +155,4 @@ class TruncatedNormal(torch.distributions.Normal):
         return self._clamp(x)
 
 
-class StdSchedule():
-    def __init__(self, init, final, duration):
-        self.init = init 
-        self.final = final 
-        self.duration = duration
-    
-    def get(self, step):
-        mix = np.clip(step / self.duration, 0.0, 1.0)
-        return (1.0 - mix) * self.init + mix * self.final
 
-def encode_traffic_light_state(light_state): 
-    if light_state == carla.TrafficLightState.Green:
-        return 1
-    elif light_state == carla.TrafficLightState.Yellow:
-        return 2
-    elif light_state == carla.TrafficLightState.Red:
-        return 2
-    else: 
-        return 0
-
-class OUActionNoise():
-    def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
-        self.theta = theta
-        self.mu = mu
-        self.sigma = sigma
-        self.dt = dt
-        self.x0 = x0
-        self.reset()
-
-    def __call__(self):
-        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + \
-                self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
-        self.x_prev = x
-
-        return x
-
-    def reset(self):
-        self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
-
-        
-
-"""
-Attention blocks
-Reference: Learn To Pay Attention
-"""
-class ProjectorBlock(nn.Module):
-    def __init__(self, in_features, out_features):
-        super(ProjectorBlock, self).__init__()
-        self.op = nn.Conv2d(in_channels=in_features, out_channels=out_features,
-            kernel_size=1, padding=0, bias=False)
-
-    def forward(self, x):
-        return self.op(x)
-
-
-class SpatialAttn(nn.Module):
-    def __init__(self, in_features, normalize_attn=True):
-        super(SpatialAttn, self).__init__()
-        self.normalize_attn = normalize_attn
-        self.op = nn.Conv2d(in_channels=in_features, out_channels=1,
-            kernel_size=1, padding=0, bias=False)
-
-    def forward(self, l, g):
-        N, C, H, W = l.size()
-        c = self.op(l+g) # (batch_size,1,H,W)
-        if self.normalize_attn:
-            a = F.softmax(c.view(N,1,-1), dim=2).view(N,1,H,W)
-        else:
-            a = torch.sigmoid(c)
-        g = torch.mul(a.expand_as(l), l)
-        if self.normalize_attn:
-            g = g.view(N,C,-1).sum(dim=2) # (batch_size,C)
-        else:
-            g = F.adaptive_avg_pool2d(g, (1,1)).view(N,C)
-        return g
-    
-    
-def semantic_image_to_labels(image):
-    return image[:,:,2]
-
-# see labels meaning here: https://carla.readthedocs.io/en/0.9.10/ref_sensors/#rgb-camera
-# only using 6 labels
-def filter_semantic_labels(image_labels):
-    mapping = {
-        0 : 0,
-        1 : 0,
-        2 : 0,
-        3 : 0,
-        5 : 0,
-        9 : 0,
-        11: 0,
-        12: 0,
-        13: 0,
-        14: 0,
-        15: 0,
-        16: 0,
-        17: 0,
-        19: 0,
-        20: 0,
-        21: 0,
-        22: 0,
-        4 : 1,
-        10: 1,
-        18: 2,
-        6 : 3,
-        7 : 4,
-        8 : 5}
-    
-    k = np.array(list(mapping.keys()))
-    v = np.array(list(mapping.values()))
-    
-    mapping_ar = np.zeros(k.max()+1,dtype=v.dtype) #k,v from approach #1
-    mapping_ar[k] = v
-
-    image_labels_filtered = mapping_ar[image_labels]
-    
-    return image_labels_filtered
-
-def semantic_labels_to_image(array):
-   
-    classes = {
-        0: [70, 70, 70],   # static
-        1: [0, 0, 142],    # dynamic
-        2: [250, 170, 30], # traffic light
-        3: [157, 234, 50], # road lines
-        4: [128, 64, 128], # road
-        5: [244, 35, 232]  # side walks
-    }
-        
-    result = np.zeros((array.shape[0], array.shape[1], 3))
-    for key, value in classes.items():
-        result[np.where(array == key)] = value
-    result = result.astype(np.uint8)
-    return result
-
-
-def create_resnet_basic_block(
-    width_output_feature_map, height_output_feature_map, nb_channel_in, nb_channel_out
-):
-    basic_block = nn.Sequential(
-        nn.Upsample(size=(width_output_feature_map, height_output_feature_map), mode="nearest"),
-        nn.Conv2d(
-            nb_channel_in,
-            nb_channel_out,
-            kernel_size=(3, 3),
-            stride=(1, 1),
-            padding=(1, 1),
-            bias=False,
-        ),
-        nn.BatchNorm2d(
-            nb_channel_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True
-        ),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(
-            nb_channel_out,
-            nb_channel_out,
-            kernel_size=(3, 3),
-            stride=(1, 1),
-            padding=(1, 1),
-            bias=False,
-        ),
-        nn.BatchNorm2d(
-            nb_channel_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True
-        ),
-    )
-    return basic_block 

@@ -3,7 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
-from utilities.networks import weights_init, get_n_params_network
+from utilities.networks import weights_init
+
+# inspired in https://github.com/Aladoro/Stabilizing-Off-Policy-RL
 
 def custom_parameterized_aug_optimizer_builder(encoder_lr, **kwargs):
     """Apply different optimizer parameters for S"""
