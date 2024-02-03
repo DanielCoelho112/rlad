@@ -7,7 +7,7 @@ This is the implementation of RLAD, which is described in:
 [Miguel Oliveira](https://github.com/miguelriemoliveira),
 [Vítor Santos](https://github.com/vitoruapt).
 >
-> [IEEE Transactions on Automation Science and Engineering](https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=8856)<br/>
+> [IEEE Transactions on Automation Science and Engineering](https://ieeexplore.ieee.org/document/10364974)<br/>
 
 If you find our work useful, please consider citing: WIP
 <!-- ```bibtex
